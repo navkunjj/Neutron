@@ -12,7 +12,46 @@ import { SecurityGuard } from './security/guard';
 import { MongoUserStore } from './storage/mongo';
 
 const app = express();
-app.use(cors({ origin: config.clientOrigin || true, allowedHeaders: ['Content-Type', 'Authorization'] }));
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser calls (like curl, background jobs, mobile)
+    if (!origin) return callback(null, true);
+
+    const configuredOrigin = config.clientOrigin ? config.clientOrigin.replace(/\/+$/, '') : null;
+    if (configuredOrigin && (origin === configuredOrigin || configuredOrigin === '*')) {
+      return callback(null, true);
+    }
+
+    // Auto-allow local development and common cloud deployments (Vercel, Render)
+    if (
+      !config.clientOrigin ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com') ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:')
+    ) {
+      return callback(null, true);
+    }
+
+    // Permissive fallback so cross-origin deployments are never blocked
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'X-Requested-With',
+    'Cache-Control',
+    'Origin',
+  ],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 const userStore = config.mongodbUri && config.jwtSecret
@@ -322,10 +361,11 @@ app.post('/api/agent/stream', async (req: Request, res: Response) => {
   const userId = getAuthenticatedUserId(req);
   const userEnv = getUserEnv(userId);
 
-  // Set SSE Headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  // Set SSE Headers with anti-buffering for Cloudflare / Nginx / Render
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
   const sendEvent = (event: AgentEvent) => {
