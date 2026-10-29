@@ -433,14 +433,20 @@ export const App: React.FC = () => {
     setCurrentGoal('');
     setWorkspaceTree([]);
 
-    setCurrentUser(user);
     try {
+      localStorage.removeItem('neutron_user');
+      localStorage.removeItem('neutron_token');
+      sessionStorage.removeItem('neutron_user');
+      sessionStorage.removeItem('neutron_token');
+
       const storage = remember ? localStorage : sessionStorage;
       storage.setItem('neutron_user', JSON.stringify(user));
       storage.setItem('neutron_token', token);
     } catch (e) {
       console.error('Failed to save user session:', e);
     }
+
+    setCurrentUser(user);
   };
 
   const handleSignOut = () => {

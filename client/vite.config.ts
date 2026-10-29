@@ -8,8 +8,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://neutron-g9b0.onrender.com',
         changeOrigin: true,
+        secure: true,
       },
     },
   },

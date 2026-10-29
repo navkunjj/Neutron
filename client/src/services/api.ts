@@ -14,78 +14,108 @@ const authenticatedHeaders = (): HeadersInit => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const apiUrl = (path: string): string => `${(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')}${path}`;
+export const DEFAULT_BACKEND_URL = 'https://neutron-g9b0.onrender.com';
+
+const apiUrl = (path: string): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const baseUrl =
+    envUrl && typeof envUrl === 'string' && envUrl.trim() !== '' && envUrl.trim() !== '/'
+      ? envUrl.trim()
+      : DEFAULT_BACKEND_URL;
+  return `${baseUrl.replace(/\/+$/, '')}${path}`;
+};
+
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err: any) {
+    if (err instanceof TypeError) {
+      throw new Error(
+        `Cannot connect to backend (${DEFAULT_BACKEND_URL}). If Render is waking up from sleep, please wait 30 seconds and try again.`
+      );
+    }
+    throw err;
+  }
+}
+
+async function handleResponse<T = any>(res: Response, defaultMessage: string): Promise<T> {
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    // Non-JSON response (e.g. HTML 502/503 from reverse proxy or Cloudflare)
+  }
+
+  if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error(
+        'Backend server is waking up (Render free tier spin-up). Please wait 20-30 seconds and try again.'
+      );
+    }
+    throw new Error(data?.error || data?.message || `${defaultMessage} (${res.status})`);
+  }
+
+  return data as T;
+}
 
 export const api = {
   getAuthToken(): string | null {
     return localStorage.getItem('neutron_token') || sessionStorage.getItem('neutron_token');
   },
+
   async login(payload: { email: string; password: string }): Promise<{ user: AuthUser; token: string }> {
-    const res = await fetch(apiUrl('/api/auth/login'), {
+    const res = await safeFetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to sign in');
-    return data;
+    return handleResponse(res, 'Failed to sign in');
   },
 
   async register(payload: { name: string; email: string; password: string; role?: string }): Promise<{ user: AuthUser; token: string }> {
-    const res = await fetch(apiUrl('/api/auth/register'), {
+    const res = await safeFetch(apiUrl('/api/auth/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to register account');
-    return data;
+    return handleResponse(res, 'Failed to register account');
   },
 
   async fetchCurrentUser(): Promise<AuthUser> {
     const token = this.getAuthToken();
     if (!token) throw new Error('No active session');
-    const res = await fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Session is invalid');
+    const res = await safeFetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } });
+    const data = await handleResponse<{ user: AuthUser }>(res, 'Session is invalid');
     return data.user;
   },
 
   async fetchConversations(): Promise<Conversation[]> {
-    const res = await fetch(apiUrl('/api/conversations'), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch conversations');
-    const data = await res.json();
+    const res = await safeFetch(apiUrl('/api/conversations'), { headers: authenticatedHeaders() });
+    const data = await handleResponse<{ conversations: Conversation[] }>(res, 'Failed to fetch conversations');
     return data.conversations || [];
   },
 
   async fetchConversation(id: string): Promise<Conversation> {
-    const res = await fetch(apiUrl(`/api/conversations/${id}`), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch conversation');
-    const data = await res.json();
+    const res = await safeFetch(apiUrl(`/api/conversations/${id}`), { headers: authenticatedHeaders() });
+    const data = await handleResponse<{ conversation: Conversation }>(res, 'Failed to fetch conversation');
     return data.conversation;
   },
 
   async saveConversation(conv: Conversation): Promise<void> {
-    const res = await fetch(apiUrl('/api/conversations'), {
+    const res = await safeFetch(apiUrl('/api/conversations'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
       body: JSON.stringify(conv),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to save conversation');
-    }
+    await handleResponse(res, 'Failed to save conversation');
   },
 
   async deleteConversation(id: string): Promise<void> {
-    const res = await fetch(apiUrl(`/api/conversations/${id}`), {
+    const res = await safeFetch(apiUrl(`/api/conversations/${id}`), {
       method: 'DELETE',
       headers: authenticatedHeaders(),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to delete conversation');
-    }
+    await handleResponse(res, 'Failed to delete conversation');
   },
 
   async fetchWorkspaceTree(): Promise<{
@@ -93,74 +123,63 @@ export const api = {
     tree: FileNode[];
     inspection: ProjectInspection;
   }> {
-    const res = await fetch(apiUrl('/api/workspace/tree'), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch workspace tree');
-    return res.json();
+    const res = await safeFetch(apiUrl('/api/workspace/tree'), { headers: authenticatedHeaders() });
+    return handleResponse(res, 'Failed to fetch workspace tree');
   },
 
   async fetchFileContent(filePath: string): Promise<string> {
-    const res = await fetch(apiUrl(`/api/workspace/file?path=${encodeURIComponent(filePath)}`), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch file');
-    const data = await res.json();
+    const res = await safeFetch(apiUrl(`/api/workspace/file?path=${encodeURIComponent(filePath)}`), { headers: authenticatedHeaders() });
+    const data = await handleResponse<{ content: string }>(res, 'Failed to fetch file');
     return data.content;
   },
 
   async saveFileContent(filePath: string, content: string): Promise<FileDiff> {
-    const res = await fetch(apiUrl('/api/workspace/file'), {
+    const res = await safeFetch(apiUrl('/api/workspace/file'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
       body: JSON.stringify({ path: filePath, content }),
     });
-    if (!res.ok) throw new Error('Failed to save file');
-    const data = await res.json();
+    const data = await handleResponse<{ diff: FileDiff }>(res, 'Failed to save file');
     return data.diff;
   },
 
   async searchFiles(query: string, isRegex = false) {
-    const res = await fetch(apiUrl('/api/workspace/search'), {
+    const res = await safeFetch(apiUrl('/api/workspace/search'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
       body: JSON.stringify({ query, isRegex }),
     });
-    if (!res.ok) throw new Error('Failed to search');
-    return res.json();
+    return handleResponse(res, 'Failed to search');
   },
 
   async runCommand(command: string, cwd?: string): Promise<CommandResult> {
-    const res = await fetch(apiUrl('/api/execute/run'), {
+    const res = await safeFetch(apiUrl('/api/execute/run'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
       body: JSON.stringify({ command, cwd }),
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Command failed');
-    }
-    const data = await res.json();
+    const data = await handleResponse<{ result: CommandResult }>(res, 'Command failed');
     return data.result;
   },
 
   async fetchSettings(): Promise<AppSettings> {
-    const res = await fetch(apiUrl('/api/settings'), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch settings');
-    return res.json();
+    const res = await safeFetch(apiUrl('/api/settings'), { headers: authenticatedHeaders() });
+    return handleResponse(res, 'Failed to fetch settings');
   },
 
   async updateSettings(payload: any): Promise<AppSettings> {
-    const res = await fetch(apiUrl('/api/settings'), {
+    const res = await safeFetch(apiUrl('/api/settings'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('Failed to update settings');
-    const data = await res.json();
+    const data = await handleResponse<{ settings: AppSettings }>(res, 'Failed to update settings');
     return data.settings;
   },
 
   async fetchModels(): Promise<ModelProvider[]> {
-    const res = await fetch(apiUrl('/api/models'), { headers: authenticatedHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch models');
-    const data = await res.json();
+    const res = await safeFetch(apiUrl('/api/models'), { headers: authenticatedHeaders() });
+    const data = await handleResponse<{ providers: ModelProvider[] }>(res, 'Failed to fetch models');
     return data.providers || [];
   },
 
@@ -185,19 +204,35 @@ export const api = {
 
     (async () => {
       try {
-        const response = await fetch(apiUrl('/api/agent/stream'), {
+        const response = await safeFetch(apiUrl('/api/agent/stream'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authenticatedHeaders() },
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+            ...authenticatedHeaders(),
+          },
           body: JSON.stringify(payload),
           signal: activeSignal,
         });
 
         if (!response.ok) {
-          throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+          let errorDetail = '';
+          try {
+            const errJson = await response.json();
+            errorDetail = errJson.error || errJson.message || '';
+          } catch {
+            errorDetail = await response.text().catch(() => '');
+          }
+          if (response.status === 502 || response.status === 503 || response.status === 504) {
+            throw new Error(
+              errorDetail || 'Render backend is waking up (free tier spin-up). Please retry in 20-30 seconds.'
+            );
+          }
+          throw new Error(errorDetail || `Server returned status ${response.status}`);
         }
 
         const reader = response.body?.getReader();
-        if (!reader) throw new Error('No readable stream');
+        if (!reader) throw new Error('No readable stream returned by server');
 
         const decoder = new TextDecoder();
         let buffer = '';

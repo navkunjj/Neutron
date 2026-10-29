@@ -195,7 +195,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthenticated }) => {
             <div className="auth-status-pill">
               <span className="auth-status-dot" />
               <span>Sandbox Engine Online</span>
-              <span className="auth-status-port">Port 3001</span>
+              <span className="auth-status-port">Cloud Active</span>
             </div>
           </div>
         </div>
