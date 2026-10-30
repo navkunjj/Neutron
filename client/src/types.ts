@@ -77,6 +77,7 @@ export interface Conversation {
   model: string;
   provider: string;
   messages: ChatMessage[];
+  mode?: 'agent' | 'chat';
   currentTask?: {
     id: string;
     goal: string;

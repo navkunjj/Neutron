@@ -10,6 +10,10 @@ import {
   AlertCircle,
   Clock,
   Loader2,
+  Cpu,
+  ChevronRight,
+  ChevronDown,
+  FileCode,
 } from 'lucide-react';
 import type { TaskStep, FileDiff, CommandResult, FileNode } from '../types';
 
@@ -38,170 +42,188 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({
 
   if (!isOpen) return null;
 
+  // Fallback sample demonstration steps if no active task is running
+  const effectiveGoal =
+    currentGoal || 'Autonomous Agent · Ready to execute tasks across workspace';
+
+  const defaultSampleSteps: TaskStep[] = [
+    {
+      id: 'step_1',
+      title: 'Analyze workspace dependencies & project manifest',
+      status: 'completed',
+      detail: 'Scanned package.json, vite config, and client source structure.',
+    },
+    {
+      id: 'step_2',
+      title: 'Initialize cosmic glassmorphism dark theme engine',
+      status: 'completed',
+      detail: 'Applied nebula wallpaper, glass composer, and 4 quick action cards.',
+    },
+    {
+      id: 'step_3',
+      title: 'Awaiting user instructions in Chat Workspace',
+      status: 'in_progress',
+      detail: 'Ready to write code, execute commands, and produce diffs.',
+    },
+  ];
+
+  const effectiveSteps = steps.length > 0 ? steps : defaultSampleSteps;
+
+  const defaultSampleCommands: CommandResult[] = [
+    {
+      command: 'npm run build',
+      exitCode: 0,
+      durationMs: 1860,
+      stdout:
+        'vite v8.3.5 building client environment for production...\n✓ 1950 modules transformed.\n✓ built in 1.86s\ndist/assets/index.js 289.78 kB\ndist/assets/index.css 17.07 kB',
+      stderr: '',
+    },
+  ];
+
+  const effectiveCommands = commands.length > 0 ? commands : defaultSampleCommands;
+
   return (
-    <aside className="neutron-activity-panel">
-      {/* Activity Header */}
-      <div className="activity-header">
-        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.04em' }}>
-          AGENT ACTIVITY
-        </span>
-        <button className="action-icon-btn" onClick={onClose} title="Close activity panel">
+    <>
+      <div className="activity-panel-backdrop" onClick={onClose} />
+      <aside className="neutron-activity-panel">
+      {/* Activity Panel Header */}
+      <div className="activity-panel-header">
+        <div className="activity-header-left">
+          <div className="activity-live-indicator">
+            <span className="live-pulse-dot" />
+            <span className="live-status-text">AGENT ACTIVE</span>
+          </div>
+          <span className="activity-panel-subtitle">Execution Pipeline</span>
+        </div>
+
+        <button
+          className="activity-close-btn"
+          onClick={onClose}
+          title="Close agent activity panel"
+          aria-label="Close activity panel"
+        >
           <X size={16} />
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="activity-tabs">
+      {/* Segmented Tabs */}
+      <div className="activity-tabs-bar">
         <button
-          className={`activity-tab-btn ${activeTab === 'plan' ? 'active' : ''}`}
+          className={`activity-tab-pill ${activeTab === 'plan' ? 'active' : ''}`}
           onClick={() => setActiveTab('plan')}
         >
-          <ListTodo size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Plan ({steps.length})
+          <ListTodo size={13} />
+          <span>Plan</span>
+          <span className="tab-count-badge">{effectiveSteps.length}</span>
         </button>
 
         <button
-          className={`activity-tab-btn ${activeTab === 'diffs' ? 'active' : ''}`}
+          className={`activity-tab-pill ${activeTab === 'diffs' ? 'active' : ''}`}
           onClick={() => setActiveTab('diffs')}
         >
-          <GitCompare size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Diffs ({diffs.length})
+          <GitCompare size={13} />
+          <span>Diffs</span>
+          {diffs.length > 0 && <span className="tab-count-badge">{diffs.length}</span>}
         </button>
 
         <button
-          className={`activity-tab-btn ${activeTab === 'terminal' ? 'active' : ''}`}
+          className={`activity-tab-pill ${activeTab === 'terminal' ? 'active' : ''}`}
           onClick={() => setActiveTab('terminal')}
         >
-          <TerminalIcon size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Terminal ({commands.length})
+          <TerminalIcon size={13} />
+          <span>Terminal</span>
+          <span className="tab-count-badge">{effectiveCommands.length}</span>
         </button>
 
         <button
-          className={`activity-tab-btn ${activeTab === 'tree' ? 'active' : ''}`}
+          className={`activity-tab-pill ${activeTab === 'tree' ? 'active' : ''}`}
           onClick={() => setActiveTab('tree')}
         >
-          <FolderTree size={12} style={{ display: 'inline', marginRight: 4 }} />
-          Explorer
+          <FolderTree size={13} />
+          <span>Files</span>
         </button>
       </div>
 
-      {/* Content Area */}
-      <div className="activity-content">
-        {/* Tab: Task Plan */}
+      {/* Content Scroll Area */}
+      <div className="activity-body-scroll">
+        {/* TAB 1: PLAN */}
         {activeTab === 'plan' && (
-          <div>
-            {currentGoal && (
-              <div
-                style={{
-                  background: 'var(--bg-surface-card)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  marginBottom: '14px',
-                }}
-              >
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  CURRENT GOAL
-                </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginTop: '2px' }}>
-                  {currentGoal}
-                </div>
+          <div className="activity-plan-view">
+            {/* Goal Card */}
+            <div className="activity-goal-card">
+              <div className="goal-card-top">
+                <Cpu size={14} className="goal-icon" />
+                <span className="goal-label">TARGET GOAL</span>
               </div>
-            )}
+              <div className="goal-text">{effectiveGoal}</div>
+            </div>
 
-            {steps.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 10px', fontSize: '13px' }}>
-                No active plan. Start a coding task to see NEUTRON's autonomous steps.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {steps.map((s, idx) => (
-                  <div
-                    key={s.id || idx}
-                    style={{
-                      background: 'var(--bg-surface)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
-                      display: 'flex',
-                      gap: '10px',
-                    }}
-                  >
-                    <div style={{ marginTop: '2px' }}>
+            {/* Steps Timeline */}
+            <div className="activity-steps-timeline">
+              <div className="timeline-section-title">EXECUTION STEPS</div>
+
+              <div className="timeline-steps-list">
+                {effectiveSteps.map((s, idx) => (
+                  <div key={s.id || idx} className={`timeline-step-card status-${s.status}`}>
+                    <div className="step-status-icon-col">
                       {s.status === 'completed' && (
-                        <CheckCircle2 size={16} style={{ color: 'var(--status-success)' }} />
+                        <CheckCircle2 size={16} className="icon-completed" />
                       )}
                       {s.status === 'in_progress' && (
-                        <Loader2
-                          size={16}
-                          style={{
-                            color: 'var(--accent-blue)',
-                            animation: 'spin 1s linear infinite',
-                          }}
-                        />
+                        <Loader2 size={16} className="icon-in-progress" />
                       )}
                       {s.status === 'failed' && (
-                        <AlertCircle size={16} style={{ color: 'var(--status-error)' }} />
+                        <AlertCircle size={16} className="icon-failed" />
                       )}
                       {s.status === 'pending' && (
-                        <Clock size={16} style={{ color: 'var(--text-muted)' }} />
+                        <Clock size={16} className="icon-pending" />
                       )}
+                      {idx < effectiveSteps.length - 1 && <div className="step-connector-line" />}
                     </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {s.title}
+
+                    <div className="step-details-col">
+                      <div className="step-title-row">
+                        <span className="step-number">0{idx + 1}</span>
+                        <span className="step-title">{s.title}</span>
                       </div>
-                      {s.detail && (
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          {s.detail}
-                        </div>
-                      )}
+                      {s.detail && <div className="step-detail-text">{s.detail}</div>}
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Tab: Diffs */}
+        {/* TAB 2: DIFFS */}
         {activeTab === 'diffs' && (
-          <div>
+          <div className="activity-diffs-view">
             {diffs.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 10px', fontSize: '13px' }}>
-                No file modifications yet.
+              <div className="activity-empty-state">
+                <div className="empty-state-icon-circle">
+                  <GitCompare size={22} />
+                </div>
+                <div className="empty-state-title">No pending file modifications</div>
+                <div className="empty-state-desc">
+                  When the AI coding agent modifies project code, unified git diffs will appear here in real-time.
+                </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="diffs-list">
                 {diffs.map((d, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: 'var(--bg-surface-card)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '6px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '8px 12px',
-                        background: 'var(--bg-surface)',
-                        borderBottom: '1px solid var(--border-subtle)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-mono)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-accent)' }}>{d.filePath}</span>
-                      <div style={{ display: 'flex', gap: '6px', fontSize: '11px' }}>
-                        <span style={{ color: 'var(--diff-add-text)' }}>+{d.additions}</span>
-                        <span style={{ color: 'var(--diff-del-text)' }}>-{d.deletions}</span>
+                  <div key={i} className="diff-card">
+                    <div className="diff-header">
+                      <div className="diff-file-info">
+                        <FileCode size={13} className="diff-icon" />
+                        <span className="diff-filepath">{d.filePath}</span>
+                      </div>
+                      <div className="diff-stats">
+                        <span className="stat-add">+{d.additions}</span>
+                        <span className="stat-del">-{d.deletions}</span>
                       </div>
                     </div>
-                    <div className="diff-container" style={{ maxHeight: '200px' }}>
+
+                    <div className="diff-lines-container">
                       {d.diffText.split('\n').map((line, idx) => {
                         let type = '';
                         if (line.startsWith('+')) type = 'addition';
@@ -209,7 +231,12 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({
                         else if (line.startsWith('@@')) type = 'header';
                         return (
                           <div key={idx} className={`diff-line ${type}`}>
-                            {line}
+                            <span className="line-prefix">
+                              {type === 'addition' ? '+' : type === 'deletion' ? '-' : ' '}
+                            </span>
+                            <span className="line-content">
+                              {type === 'addition' || type === 'deletion' ? line.slice(1) : line}
+                            </span>
                           </div>
                         );
                       })}
@@ -221,77 +248,51 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({
           </div>
         )}
 
-        {/* Tab: Terminal Execution */}
+        {/* TAB 3: TERMINAL */}
         {activeTab === 'terminal' && (
-          <div>
-            {commands.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '30px 10px', fontSize: '13px' }}>
-                No commands executed yet.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {commands.map((cmd, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: '#07080a',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '6px 10px',
-                        background: 'var(--bg-surface)',
-                        borderBottom: '1px solid var(--border-subtle)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '11px',
-                        fontFamily: 'var(--font-mono)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-primary)' }}>$ {cmd.command}</span>
-                      <span
-                        style={{
-                          color: cmd.exitCode === 0 ? 'var(--status-success)' : 'var(--status-error)',
-                        }}
-                      >
-                        code: {cmd.exitCode} ({cmd.durationMs}ms)
-                      </span>
+          <div className="activity-terminal-view">
+            <div className="terminal-commands-list">
+              {effectiveCommands.map((cmd, i) => (
+                <div key={i} className="terminal-window-card">
+                  <div className="terminal-window-topbar">
+                    <div className="terminal-mac-dots">
+                      <span className="mac-dot dot-red" />
+                      <span className="mac-dot dot-yellow" />
+                      <span className="mac-dot dot-green" />
                     </div>
+
+                    <div className="terminal-command-name">
+                      <span className="cmd-prompt">$</span> {cmd.command}
+                    </div>
+
                     <div
-                      style={{
-                        padding: '10px',
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-mono)',
-                        whiteSpace: 'pre-wrap',
-                        color: cmd.exitCode === 0 ? '#38bdf8' : '#f87171',
-                        maxHeight: '180px',
-                        overflowY: 'auto',
-                      }}
+                      className={`terminal-exit-badge ${cmd.exitCode === 0 ? 'success' : 'error'}`}
                     >
-                      {cmd.stdout || cmd.stderr || 'No output produced.'}
+                      {cmd.exitCode === 0 ? '0' : cmd.exitCode ?? 'err'} ({cmd.durationMs}ms)
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  <div className="terminal-output-body">
+                    <pre>{cmd.stdout || cmd.stderr || 'Command executed with no stdout/stderr.'}</pre>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Tab: File Tree Explorer */}
+        {/* TAB 4: FILE TREE */}
         {activeTab === 'tree' && (
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>
-              PROJECT FILES (Click to view)
+          <div className="activity-tree-view">
+            <div className="tree-header-row">
+              <span className="tree-label">PROJECT WORKSPACE FILES</span>
             </div>
             <FileTreeRenderer nodes={workspaceTree} onSelectFile={onSelectFile} />
           </div>
         )}
       </div>
     </aside>
+    </>
   );
 };
 
@@ -300,7 +301,7 @@ const FileTreeRenderer: React.FC<{ nodes: FileNode[]; onSelectFile: (path: strin
   onSelectFile,
 }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+    <div className="file-tree-container">
       {nodes.map((node) => (
         <FileTreeNodeItem key={node.path} node={node} onSelectFile={onSelectFile} level={0} />
       ))}
@@ -317,8 +318,10 @@ const FileTreeNodeItem: React.FC<{
   const isDir = node.type === 'directory';
 
   return (
-    <div>
+    <div className="tree-node-wrapper">
       <div
+        className={`tree-node-row ${isDir ? 'is-directory' : 'is-file'}`}
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => {
           if (isDir) {
             setOpen(!open);
@@ -326,34 +329,22 @@ const FileTreeNodeItem: React.FC<{
             onSelectFile(node.path);
           }
         }}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '4px 6px',
-          paddingLeft: `${level * 14 + 6}px`,
-          borderRadius: '4px',
-          cursor: 'pointer',
-          color: isDir ? 'var(--text-primary)' : 'var(--text-secondary)',
-          fontSize: '12px',
-          fontFamily: 'var(--font-mono)',
-          transition: 'background 0.1s',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
         {isDir ? (
-          <FolderTree size={13} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+          <>
+            <span className="tree-chevron">
+              {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </span>
+            <FolderTree size={13} className="tree-folder-icon" />
+          </>
         ) : (
-          <FileText size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <FileText size={13} className="tree-file-icon" />
         )}
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {node.name}
-        </span>
+        <span className="tree-node-name">{node.name}</span>
       </div>
 
       {isDir && open && node.children && (
-        <div>
+        <div className="tree-children-container">
           {node.children.map((child) => (
             <FileTreeNodeItem
               key={child.path}

@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import {
-  Edit3,
-  LayoutGrid,
-  Bot,
-  Globe,
+  Plus,
+  Folder,
   ChevronDown,
-  ChevronRight,
-  Clock,
-  Settings,
-  Sparkles,
+  MessageSquare,
+  MoreHorizontal,
   ExternalLink,
   Trash2,
   Pin,
@@ -20,6 +16,9 @@ import { NeutronLogo } from './NeutronLogo';
 interface SidebarProps {
   conversations: Conversation[];
   activeConversationId: string | null;
+  projectName?: string;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
   onSelectConversation: (id: string) => void;
   onNewChat: () => void;
   onDeleteConversation: (id: string) => void;
@@ -29,232 +28,225 @@ interface SidebarProps {
   workspaceDir: string;
   user?: AuthUser | null;
   onSignOut?: () => void;
+  mode?: 'agent' | 'chat';
+  onModeChange?: (mode: 'agent' | 'chat') => void;
 }
+
+const formatTimeAgo = (timestamp?: number): string => {
+  if (!timestamp) return 'Just now';
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 5) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  return new Date(timestamp).toLocaleDateString();
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   conversations,
   activeConversationId,
+  projectName = 'Main Project',
+  mobileOpen = false,
+  onCloseMobile,
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
   onTogglePin,
   onOpenSettings,
-  onOpenWorkspaceModal,
-  workspaceDir,
   user,
   onSignOut,
+  mode = 'chat',
+  onModeChange,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [todayOpen, setTodayOpen] = useState(true);
-  const [yesterdayOpen, setYesterdayOpen] = useState(false);
-  const [earlierOpen, setEarlierOpen] = useState(false);
+  const isAgent = mode === 'agent';
+  const visibleConversations = conversations.filter((c) => {
+    if (isAgent) return c.mode === 'agent';
+    return c.mode === 'chat' || !c.mode;
+  });
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  const unpinnedList = conversations.filter((c) => !c.pinned);
-
-  const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000;
-  const todayList = unpinnedList.filter((c) => now - c.updatedAt < oneDay);
-  const yesterdayList = unpinnedList.filter(
-    (c) => now - c.updatedAt >= oneDay && now - c.updatedAt < 2 * oneDay
-  );
-  const earlierList = unpinnedList.filter((c) => now - c.updatedAt >= 2 * oneDay);
-
+  const userName = user?.name || 'nav';
+  const userRole = user?.role || 'AI Engineer';
 
   return (
-    <aside className={`neutron-sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <>
+      {mobileOpen && (
+        <div className="sidebar-mobile-backdrop" onClick={onCloseMobile} />
+      )}
+      <aside className={`neutron-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
       {/* Top Header */}
       <div className="sidebar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <NeutronLogo size={24} withText={!collapsed} />
-        </div>
+        <NeutronLogo size={26} withText={true} />
         <button
-          className="action-icon-btn"
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? 'Expand' : 'Collapse'}
+          className="sidebar-header-icon-btn"
+          onClick={onOpenSettings}
+          title="Open Project / Settings"
+          aria-label="Open Project / Settings"
         >
-          <ExternalLink size={14} />
+          <ExternalLink size={15} />
         </button>
       </div>
 
-      {!collapsed && (
-        <>
-          {/* Chat count row */}
-          <div className="sidebar-chat-badge-row">
-            <span>Chat</span>
-            <span className="sidebar-chat-count">{conversations.length}</span>
-          </div>
-
-          {/* New Chat Button with gradient tint and shortcut */}
-          <button className="sidebar-newchat-btn" onClick={onNewChat} title="New Chat (Ctrl+K)">
-            <Edit3 size={15} />
-            <span>New Chat</span>
-            <span className="shortcut">⌘ T</span>
+      <div className="sidebar-body">
+        {/* Project Section */}
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">PROJECT</div>
+          <button
+            className="sidebar-project-btn"
+            onClick={onOpenSettings}
+            title={projectName}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              <Folder size={15} className="sidebar-folder-icon" />
+              <span className="sidebar-project-name">{projectName}</span>
+            </div>
+            <ChevronDown size={14} className="sidebar-chevron" />
           </button>
+        </div>
 
-          {/* Nav Menu Items */}
-          <div className="sidebar-nav-menu">
-            <button className="sidebar-nav-item" onClick={onOpenWorkspaceModal}>
-              <LayoutGrid size={15} />
-              <span>Dashboard</span>
-            </button>
-            <button className="sidebar-nav-item" onClick={onOpenWorkspaceModal}>
-              <Bot size={15} />
-              <span>Agents</span>
-              <span className="badge-right">⌘ T</span>
-            </button>
-            <button className="sidebar-nav-item" onClick={onOpenWorkspaceModal} title={`Workspace: ${workspaceDir}`}>
-              <Globe size={15} />
-              <span>Website</span>
+        {/* New Chat Button Row */}
+        <div style={{ marginTop: '12px' }}>
+          <button
+            className="sidebar-newchat-pill"
+            onClick={() => { onNewChat(); onCloseMobile?.(); }}
+            title="Create a new conversation (Ctrl+K)"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <Plus size={16} />
+              <span style={{ fontWeight: 500, fontSize: '13px' }}>New Chat</span>
+            </div>
+            <span className="sidebar-token-badge">86 K</span>
+          </button>
+        </div>
+
+        {/* Recent Chats Section (Scoped to active Mode) */}
+        <div className="sidebar-section" style={{ marginTop: '22px' }}>
+          <div className="sidebar-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>{isAgent ? 'AGENT SESSIONS' : 'RECENT CHATS'}</span>
+            <button
+              type="button"
+              className="sidebar-mode-indicator-pill"
+              onClick={() => onModeChange?.(isAgent ? 'chat' : 'agent')}
+              title={`Switch to ${isAgent ? 'Assistant' : 'Coding Agent'} mode`}
+              style={{ cursor: onModeChange ? 'pointer' : 'default' }}
+            >
+              {isAgent ? 'Agent' : 'Assistant'}
             </button>
           </div>
-
-          {/* History Accordion */}
-          <div className="sidebar-history-container">
-            {/* Today Accordion */}
-            <div>
-              <div
-                className="history-accordion-header"
-                onClick={() => setTodayOpen(!todayOpen)}
-              >
-                {todayOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                <span>Today</span>
-              </div>
-
-              {todayOpen && (
-                <div style={{ paddingLeft: '6px' }}>
-                  {todayList.map((c) => (
-                    <div
-                      key={c.id}
-                      className={`conversation-item ${activeConversationId === c.id ? 'active' : ''}`}
-                      onClick={() => onSelectConversation(c.id)}
-                    >
-                      <span className="conversation-title">{c.title}</span>
-                      <div className="conversation-actions" onClick={(e) => e.stopPropagation()}>
-                        <button className="action-icon-btn" onClick={() => onTogglePin(c.id)}>
-                          <Pin size={11} />
-                        </button>
-                        <button className="action-icon-btn" onClick={() => onDeleteConversation(c.id)}>
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Yesterday Accordion */}
-            <div>
-              <div
-                className="history-accordion-header"
-                onClick={() => setYesterdayOpen(!yesterdayOpen)}
-              >
-                {yesterdayOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                <span>Yesterday</span>
-              </div>
-              {yesterdayOpen && yesterdayList.length > 0 && (
-                <div style={{ paddingLeft: '6px' }}>
-                  {yesterdayList.map((c) => (
-                    <div
-                      key={c.id}
-                      className={`conversation-item ${activeConversationId === c.id ? 'active' : ''}`}
-                      onClick={() => onSelectConversation(c.id)}
-                    >
-                      <span className="conversation-title">{c.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Earlier Accordion */}
-            <div>
-              <div
-                className="history-accordion-header"
-                onClick={() => setEarlierOpen(!earlierOpen)}
-              >
-                {earlierOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                <span>Earlier</span>
-              </div>
-              {earlierOpen && earlierList.length > 0 && (
-                <div style={{ paddingLeft: '6px' }}>
-                  {earlierList.map((c) => (
-                    <div
-                      key={c.id}
-                      className={`conversation-item ${activeConversationId === c.id ? 'active' : ''}`}
-                      onClick={() => onSelectConversation(c.id)}
-                    >
-                      <span className="conversation-title">{c.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer with Schedule, Settings, Glowing Pill, and Profile */}
-          <div className="sidebar-footer">
-            <button className="sidebar-nav-item" onClick={onOpenWorkspaceModal}>
-              <Clock size={15} />
-              <span>Schedule</span>
-            </button>
-
-            <button className="sidebar-nav-item" onClick={onOpenSettings}>
-              <Settings size={15} />
-              <span>Settings</span>
-            </button>
-
-            {/* The glowing active AI Agent pill card */}
-            <div className="active-agent-pill-card">
-              <Sparkles size={14} />
-              <span>AI Agent</span>
-              <span style={{ fontSize: '11px', opacity: 0.9, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span className="active-agent-dot" /> Active
-              </span>
-            </div>
-
-            {/* Authenticated User Profile Badge & Logout */}
-            {user ? (
-              <div className="user-profile-card">
-                <div
-                  className="user-profile-avatar"
-                  style={{ background: user.avatarColor || 'linear-gradient(135deg, #ff6644 0%, #ff8554 100%)' }}
-                >
-                  {user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div className="user-profile-details" onClick={onOpenSettings} style={{ cursor: 'pointer' }} title="Open personal settings">
-                  <span className="user-profile-name">{user.name}</span>
-                  <span className="user-profile-role">{user.role || 'AI Engineer'}</span>
-                </div>
-                {onSignOut && (
-                  <button
-                    className="user-logout-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSignOut();
-                    }}
-                    title="Sign Out / Switch Account"
-                  >
-                    <LogOut size={14} />
-                  </button>
-                )}
+          <div className="sidebar-chat-list">
+            {visibleConversations.length === 0 ? (
+              <div className="sidebar-empty-chats">
+                {isAgent ? 'No agent sessions yet.' : 'No assistant chats yet.'}
               </div>
             ) : (
-              <div className="user-profile-badge" onClick={onOpenSettings}>
-                <div className="user-avatar-circle"><Settings size={15} /></div>
-                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    Personal settings
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    Models, keys & workspace
-                  </span>
+              visibleConversations.map((c) => {
+              const isActive = activeConversationId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  className={`sidebar-chat-item ${isActive ? 'active' : ''}`}
+                  onClick={() => { onSelectConversation(c.id); onCloseMobile?.(); }}
+                >
+                  <MessageSquare size={15} className="chat-item-icon" />
+                  <div className="chat-item-text">
+                    <div className="chat-item-title">{c.title}</div>
+                    <div className="chat-item-time">{formatTimeAgo(c.updatedAt)}</div>
+                  </div>
+
+                  {isActive && (
+                    <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="chat-item-menu-btn"
+                        onClick={() => setActiveMenuId(activeMenuId === c.id ? null : c.id)}
+                        title="Conversation options"
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+
+                      {activeMenuId === c.id && (
+                        <div className="chat-item-dropdown">
+                          <button
+                            onClick={() => {
+                              onTogglePin(c.id);
+                              setActiveMenuId(null);
+                            }}
+                          >
+                            <Pin size={12} />
+                            <span>{c.pinned ? 'Unpin chat' : 'Pin chat'}</span>
+                          </button>
+                          <button
+                            className="danger"
+                            onClick={() => {
+                              onDeleteConversation(c.id);
+                              setActiveMenuId(null);
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              );
+              })
             )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      {/* User Profile Footer */}
+      <div className="sidebar-footer">
+        <div className="user-profile-row">
+          <div className="user-avatar-wrapper" onClick={onOpenSettings} title="Profile settings">
+            <img
+              src="/avatar.jpg"
+              alt={userName}
+              className="user-avatar-photo"
+              onError={(e) => {
+                // Fallback to initials if image fails to load
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextElementSibling) {
+                  (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
+            />
+            <div className="user-avatar-initials-fallback" style={{ display: 'none' }}>
+              {userName.slice(0, 2).toUpperCase()}
+            </div>
+          </div>
+
+          <div
+            className="user-profile-info"
+            onClick={onOpenSettings}
+            style={{ cursor: 'pointer' }}
+            title="Account Settings"
+          >
+            <div className="user-profile-name">{userName}</div>
+            <div className="user-profile-role">{userRole}</div>
+          </div>
+
+          {onSignOut && (
+            <button
+              className="user-logout-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSignOut();
+              }}
+              title="Sign Out"
+              aria-label="Sign out"
+            >
+              <LogOut size={15} />
+            </button>
+          )}
+        </div>
+      </div>
     </aside>
+    </>
   );
 };

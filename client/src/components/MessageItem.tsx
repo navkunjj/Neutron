@@ -26,16 +26,30 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
   if (isUser) {
     return (
       <div className="message-wrapper user">
+        <div className="user-header">
+          <div className="user-avatar-mini">
+            <img
+              src="/avatar.jpg"
+              alt="You"
+              className="user-avatar-mini-img"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+          <span className="user-header-title">YOU</span>
+        </div>
+
         {message.files && message.files.length > 0 && (
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
             {message.files.map((f, i) => (
               <span
                 key={i}
                 style={{
-                  background: 'var(--bg-surface-hover)',
+                  background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid var(--border-subtle)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
                   fontSize: '11px',
                   color: 'var(--text-secondary)',
                   display: 'flex',
@@ -49,6 +63,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
             ))}
           </div>
         )}
+
         <div className="user-bubble">{message.content}</div>
       </div>
     );
@@ -56,12 +71,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
 
   return (
     <div className="message-wrapper assistant">
+      {/* Assistant Header outside the bubble box */}
+      <div className="assistant-header">
+        <NeutronLogo size={18} />
+        <span className="assistant-header-name">
+          NEUT<span style={{ color: '#3b82f6' }}>RON</span>
+        </span>
+      </div>
+
       <div className="assistant-bubble">
-        {/* Assistant Header */}
-        <div className="assistant-header">
-          <NeutronLogo size={18} />
-          <span>NEUTRON</span>
-        </div>
 
         {/* Task Plan Checklist if present */}
         {message.plan && message.plan.steps.length > 0 && (
@@ -109,21 +127,20 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
           </div>
         )}
 
-        {/* Markdown Formatted Content */}
+        {/* Markdown Formatted Content or 4-Dot Loading Wave */}
         <div className="markdown-content">
-          <MarkdownRenderer content={message.content} />
-          {isStreaming && (
-            <span
-              style={{
-                display: 'inline-block',
-                width: '7px',
-                height: '14px',
-                background: 'var(--accent-blue)',
-                marginLeft: '4px',
-                animation: 'blink 1s infinite',
-                verticalAlign: 'middle',
-              }}
-            />
+          {!message.content && isStreaming ? (
+            <div className="typing-dots-container" aria-label="Neutron is thinking...">
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+            </div>
+          ) : (
+            <>
+              <MarkdownRenderer content={message.content} />
+              {isStreaming && <span className="streaming-cursor" />}
+            </>
           )}
         </div>
       </div>

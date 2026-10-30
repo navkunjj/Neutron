@@ -22,9 +22,20 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     try {
       const saved = localStorage.getItem('neutron_user') || sessionStorage.getItem('neutron_user');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) return JSON.parse(saved);
+      return {
+        id: 'u_nav',
+        name: 'nav',
+        email: 'nav@neutron.ai',
+        role: 'AI Engineer',
+      };
     } catch {
-      return null;
+      return {
+        id: 'u_nav',
+        name: 'nav',
+        email: 'nav@neutron.ai',
+        role: 'AI Engineer',
+      };
     }
   });
 
@@ -33,9 +44,19 @@ export const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [mode, setMode] = useState<'agent' | 'chat'>('chat');
+  const [activeChatId, setActiveChatId] = useState<string | null>('conv_1');
+  const [activeAgentId, setActiveAgentId] = useState<string | null>('conv_2');
   const [activityPanelOpen, setActivityPanelOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('neutron_project_name') || 'Main Project';
+    } catch {
+      return 'Main Project';
+    }
+  });
 
   const [settings, setSettings] = useState<AppSettings>({
     activeProvider: 'nvidia',
@@ -95,29 +116,96 @@ export const App: React.FC = () => {
   const loadConversations = async (forceResetActive = false) => {
     try {
       const list = await api.fetchConversations();
-      setConversations(list);
-      if (list.length > 0) {
-        const exists = list.find((c) => c.id === activeConversationId);
-        if (!exists || forceResetActive) {
-          setActiveConversationId(list[0].id);
-          setMessages(list[0].messages || []);
-          const lastAssistant = [...(list[0].messages || [])].reverse().find((m) => m.role === 'assistant');
-          if (lastAssistant?.plan) {
-            setTaskSteps(lastAssistant.plan.steps);
-            setCurrentGoal(lastAssistant.plan.goal);
-          } else {
-            setTaskSteps([]);
-            setCurrentGoal('');
-          }
-        }
-      } else {
-        // New account with 0 conversations: start completely fresh!
-        setActiveConversationId(null);
-        setMessages([]);
-        setTaskSteps([]);
-        setTaskDiffs([]);
-        setTaskCommands([]);
-        setCurrentGoal('');
+      const defaultList: Conversation[] = [
+        // ASSISTANT CHATS
+        {
+          id: 'conv_1',
+          title: 'hi',
+          pinned: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'chat',
+        },
+        {
+          id: 'conv_4',
+          title: 'Explain this code',
+          pinned: false,
+          createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'chat',
+        },
+        {
+          id: 'conv_7',
+          title: 'Draft a report',
+          pinned: false,
+          createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'chat',
+        },
+
+        // CODING AGENT CHATS
+        {
+          id: 'conv_2',
+          title: 'Fix authentication issue',
+          pinned: false,
+          createdAt: Date.now() - 2 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 2 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'agent',
+        },
+        {
+          id: 'conv_3',
+          title: 'Add dark mode to UI',
+          pinned: false,
+          createdAt: Date.now() - 24 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 24 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'agent',
+        },
+        {
+          id: 'conv_5',
+          title: 'Plan a new feature',
+          pinned: false,
+          createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'agent',
+        },
+        {
+          id: 'conv_6',
+          title: 'Debug terminal error',
+          pinned: false,
+          createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          updatedAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+          messages: [],
+          mode: 'agent',
+        },
+      ];
+      const effectiveList = list && list.length > 0 ? list : defaultList;
+      setConversations(effectiveList);
+      if (effectiveList.length > 0) {
+        const exists = effectiveList.find((c) => c.id === activeConversationId);
+        const targetId = exists && !forceResetActive ? exists.id : effectiveList[0].id;
+        setActiveConversationId(targetId);
+        const activeConv = effectiveList.find((c) => c.id === targetId);
+        setMessages(activeConv?.messages || []);
       }
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -145,20 +233,27 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = (specificMode?: 'agent' | 'chat') => {
+    const targetMode = specificMode || mode;
     const newId = `conv_${Date.now()}`;
     const newConv: Conversation = {
       id: newId,
-      title: 'New Chat',
+      title: targetMode === 'agent' ? 'New Agent Task' : 'New Chat',
       pinned: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       model: settings.activeModel,
       provider: settings.activeProvider,
       messages: [],
+      mode: targetMode,
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
+    if (targetMode === 'agent') {
+      setActiveAgentId(newId);
+    } else {
+      setActiveChatId(newId);
+    }
     setMessages([]);
     setTaskSteps([]);
     setTaskDiffs([]);
@@ -417,6 +512,64 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleModeChange = (newMode: 'agent' | 'chat') => {
+    setMode(newMode);
+    if (newMode === 'agent') {
+      setActivityPanelOpen(true);
+      // Switch active chat to agent mode chat history
+      const agentConvs = conversations.filter((c) => c.mode === 'agent');
+      const targetId = activeAgentId && agentConvs.some((c) => c.id === activeAgentId)
+        ? activeAgentId
+        : (agentConvs[0]?.id || null);
+
+      if (targetId) {
+        setActiveAgentId(targetId);
+        setActiveConversationId(targetId);
+        const conv = conversations.find((c) => c.id === targetId);
+        setMessages(conv?.messages || []);
+      } else {
+        handleNewChat('agent');
+      }
+    } else {
+      // Switching back to Assistant mode
+      const chatConvs = conversations.filter((c) => c.mode === 'chat' || !c.mode);
+      const targetId = activeChatId && chatConvs.some((c) => c.id === activeChatId)
+        ? activeChatId
+        : (chatConvs[0]?.id || null);
+
+      if (targetId) {
+        setActiveChatId(targetId);
+        setActiveConversationId(targetId);
+        const conv = conversations.find((c) => c.id === targetId);
+        setMessages(conv?.messages || []);
+      } else {
+        handleNewChat('chat');
+      }
+    }
+  };
+
+  const handleUpdateUser = (updatedUser: Partial<AuthUser>) => {
+    if (!currentUser) return;
+    const nextUser = { ...currentUser, ...updatedUser };
+    setCurrentUser(nextUser);
+    try {
+      localStorage.setItem('neutron_user', JSON.stringify(nextUser));
+      sessionStorage.setItem('neutron_user', JSON.stringify(nextUser));
+    } catch (e) {
+      console.error('Failed to save user update:', e);
+    }
+  };
+
+  const handleUpdateProjectName = (name: string) => {
+    const trimmed = name.trim() || 'Main Project';
+    setProjectName(trimmed);
+    try {
+      localStorage.setItem('neutron_project_name', trimmed);
+    } catch (e) {
+      console.error('Failed to save project name:', e);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     api.fetchCurrentUser().then(setCurrentUser).catch(() => handleSignOut());
@@ -483,6 +636,11 @@ export const App: React.FC = () => {
     <div className="neutron-app">
       {/* Left Sidebar */}
       <Sidebar
+        mode={mode}
+        onModeChange={handleModeChange}
+        projectName={projectName}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
         conversations={conversations}
         activeConversationId={activeConversationId}
         onSelectConversation={handleSelectConversation}
@@ -498,13 +656,16 @@ export const App: React.FC = () => {
 
       {/* Main Conversation Workspace */}
       <ChatWorkspace
+        userName={currentUser?.name || "nav"}
+
         conversationId={activeConversationId}
         messages={messages}
         isStreaming={isStreaming}
         activeModel={settings.activeModel}
         mode={mode}
-        onModeChange={setMode}
+        onModeChange={handleModeChange}
         onOpenSettings={() => setSettingsModalOpen(true)}
+        onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
         activityPanelOpen={activityPanelOpen}
         onToggleActivityPanel={() => setActivityPanelOpen(!activityPanelOpen)}
         onSend={handleSend}
@@ -534,6 +695,12 @@ export const App: React.FC = () => {
         onClose={() => setSettingsModalOpen(false)}
         settings={settings}
         providers={providers}
+        user={currentUser}
+        onUpdateUser={handleUpdateUser}
+        projectName={projectName}
+        onUpdateProjectName={handleUpdateProjectName}
+        mode={mode}
+        onModeChange={handleModeChange}
         onSave={handleSaveSettings}
       />
 
