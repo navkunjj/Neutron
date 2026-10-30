@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   Plus,
+  Paperclip,
+  Globe,
   Star,
   ChevronDown,
   X,
@@ -16,6 +18,10 @@ interface PromptComposerProps {
   providers: ModelProvider[];
   activeModel: string;
   onSelectModel: (providerId: string, modelId: string) => void;
+  compact?: boolean;
+  onExpand?: () => void;
+  placeholder?: string;
+  compactPlaceholder?: string;
 }
 
 export const PromptComposer: React.FC<PromptComposerProps> = ({
@@ -25,20 +31,36 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
   providers,
   activeModel,
   onSelectModel,
+  compact = false,
+  onExpand,
+  placeholder,
+  compactPlaceholder,
 }) => {
   const [text, setText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [webSearchActive, setWebSearchActive] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea
+  // Auto-resize textarea (adapts to normal vs compact state)
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+      if (compact && !isFocused) {
+        textareaRef.current.style.height = '24px';
+      } else {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+      }
     }
-  }, [text]);
+  }, [text, compact, isFocused]);
+
+  useEffect(() => {
+    if (compact) {
+      setIsFocused(false);
+    }
+  }, [compact]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -72,30 +94,14 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
   };
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="prompt-composer-wrapper">
       {/* Attached Files Preview */}
       {attachedFiles.length > 0 && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', width: '100%', maxWidth: '840px' }}>
+        <div className="composer-attached-files">
           {attachedFiles.map((file, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#ffffff',
-                border: '1px solid var(--border-default)',
-                borderRadius: '8px',
-                padding: '4px 10px',
-                fontSize: '12px',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <span>{file.name}</span>
-              <button
-                onClick={() => removeFile(idx)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex' }}
-              >
+            <div key={idx} className="composer-file-pill">
+              <span className="file-name">{file.name}</span>
+              <button onClick={() => removeFile(idx)} className="file-remove-btn">
                 <X size={12} />
               </button>
             </div>
@@ -103,21 +109,40 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
         </div>
       )}
 
-      {/* The glowing Minded composer card */}
-      <div className="minded-composer-box">
+      {/* Main Glass Composer Card (with compact decrease animation when scrolling) */}
+      <div
+        className={`neutron-composer-card ${compact && !isFocused ? 'compact' : ''}`}
+        onClick={() => {
+          if (compact && !isFocused) {
+            setIsFocused(true);
+            onExpand?.();
+            textareaRef.current?.focus();
+          }
+        }}
+      >
         <textarea
           ref={textareaRef}
-          className="minded-textarea"
-          placeholder="Message Neutron. Ask a question or tell it what to work on…"
+          className="composer-textarea"
+          placeholder={
+            compact && !isFocused
+              ? (compactPlaceholder || "Message Neutron...")
+              : (placeholder || "Message Neutron. Ask a question or tell it what to work on...")
+          }
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsFocused(true);
+            onExpand?.();
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+          }}
           rows={1}
         />
 
-        {/* Bottom controls */}
-        <div className="minded-composer-bottom">
-          {/* File attach plus button */}
+        {/* Bottom Bar: Tools on Left, Model & Send on Right */}
+        <div className="composer-bottom-bar">
           <input
             type="file"
             ref={fileInputRef}
@@ -125,69 +150,64 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
             style={{ display: 'none' }}
             multiple
           />
-          <button
-            className="attach-plus-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach file or context"
-          >
-            <Plus size={18} />
-          </button>
 
-          <div className="composer-actions-right">
-            {/* Recommended dropdown */}
+          {/* Left 3 Tool Buttons */}
+          <div className="composer-tools-left">
+            <button
+              type="button"
+              className="composer-tool-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="Add file or context"
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              type="button"
+              className="composer-tool-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach document"
+            >
+              <Paperclip size={15} />
+            </button>
+            <button
+              type="button"
+              className={`composer-tool-btn ${webSearchActive ? 'active' : ''}`}
+              onClick={() => setWebSearchActive(!webSearchActive)}
+              title={webSearchActive ? 'Web search enabled' : 'Toggle web search'}
+            >
+              <Globe size={15} />
+            </button>
+          </div>
+
+          {/* Right Controls: Model Pill & Send Button */}
+          <div className="composer-controls-right">
+            {/* Recommended Model Dropdown Pill */}
             <div style={{ position: 'relative' }}>
               <button
-                className="recommended-dropdown-pill"
+                type="button"
+                className="composer-model-pill"
                 onClick={() => setShowDropdown(!showDropdown)}
               >
-                <Star size={13} fill="#ff6644" style={{ color: '#ff6644' }} />
+                <Star size={13} fill="#a78bfa" color="#a78bfa" />
                 <span>Recommended</span>
                 <ChevronDown size={13} />
               </button>
 
               {showDropdown && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    right: 0,
-                    marginBottom: '8px',
-                    background: '#ffffff',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: '12px',
-                    padding: '6px',
-                    width: '240px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                    zIndex: 50,
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '6px 8px', fontWeight: 700 }}>
-                    Select Agent Model
-                  </div>
+                <div className="model-dropdown-menu">
+                  <div className="dropdown-section-header">Select Model</div>
                   {providers.flatMap((p) =>
                     p.models.map((m) => (
                       <button
                         key={m.id}
+                        className={`dropdown-item ${m.id === activeModel ? 'selected' : ''}`}
                         onClick={() => {
                           onSelectModel(p.id, m.id);
                           setShowDropdown(false);
                         }}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 10px',
-                          background: m.id === activeModel ? '#f4f5f8' : 'transparent',
-                          border: 'none',
-                          borderRadius: '8px',
-                          color: 'var(--text-primary)',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}
                       >
-                    <span style={{ fontWeight: 600 }}>{m.name}{!p.isConfigured ? ' · add API key in Settings' : ''}</span>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{p.name}</span>
+                        <span className="model-name">{m.name}</span>
+                        <span className="provider-name">{p.name}</span>
                       </button>
                     ))
                   )}
@@ -195,26 +215,29 @@ export const PromptComposer: React.FC<PromptComposerProps> = ({
               )}
             </div>
 
-            {/* Glowing let's Go! action button */}
+            {/* Glowing Let's Go / Stop Button */}
             {isStreaming ? (
               <button
-                className="lets-go-btn"
-                style={{ background: '#ef4444', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)' }}
+                type="button"
+                className="composer-stop-btn"
                 onClick={onStop}
-                title="Stop Generation"
+                title="Stop generation"
               >
-                <Square size={13} fill="currentColor" />
+                <Square size={12} fill="currentColor" />
                 <span>Stop</span>
               </button>
             ) : (
               <button
-                className="lets-go-btn"
+                type="button"
+                className="composer-letsgo-btn"
                 onClick={handleSubmit}
                 disabled={!text.trim() && attachedFiles.length === 0}
-                title="Submit Request"
+                title="Send message"
               >
-                <span>let's Go!</span>
-                <ArrowRight size={14} />
+                <span className="letsgo-text">Let's Go!</span>
+                <div className="letsgo-arrow-circle">
+                  <ArrowRight size={13} />
+                </div>
               </button>
             )}
           </div>
