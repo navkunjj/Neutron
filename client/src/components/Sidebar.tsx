@@ -113,11 +113,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             className="sidebar-newchat-pill"
             onClick={() => { onNewChat(); onCloseMobile?.(); }}
-            title="Create a new conversation (Ctrl+K)"
+            title={isAgent ? 'Create a new agent task (Ctrl+K)' : 'Create a new chat (Ctrl+K)'}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
               <Plus size={16} />
-              <span style={{ fontWeight: 500, fontSize: '13px' }}>New Chat</span>
+              <span style={{ fontWeight: 500, fontSize: '13px' }}>
+                {isAgent ? 'New Agent Task' : 'New Chat'}
+              </span>
             </div>
             <span className="sidebar-token-badge">86 K</span>
           </button>

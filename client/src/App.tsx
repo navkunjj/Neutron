@@ -249,10 +249,13 @@ export const App: React.FC = () => {
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
+    setMode(targetMode);
     if (targetMode === 'agent') {
       setActiveAgentId(newId);
+      setActivityPanelOpen(true);
     } else {
       setActiveChatId(newId);
+      setActivityPanelOpen(false);
     }
     setMessages([]);
     setTaskSteps([]);
@@ -266,14 +269,29 @@ export const App: React.FC = () => {
     const selected = conversations.find((c) => c.id === id);
     if (selected) {
       setMessages(selected.messages || []);
-      // Restore task info if available
-      const lastAssistantMsg = [...(selected.messages || [])].reverse().find((m) => m.role === 'assistant');
-      if (lastAssistantMsg?.plan) {
-        setTaskSteps(lastAssistantMsg.plan.steps);
-        setCurrentGoal(lastAssistantMsg.plan.goal);
+      const convMode = selected.mode === 'agent' ? 'agent' : 'chat';
+      setMode(convMode);
+
+      if (convMode === 'agent') {
+        setActiveAgentId(id);
+        setActivityPanelOpen(true);
+        const lastAssistantMsg = [...(selected.messages || [])].reverse().find((m) => m.role === 'assistant');
+        if (lastAssistantMsg?.plan) {
+          setTaskSteps(lastAssistantMsg.plan.steps);
+          setCurrentGoal(lastAssistantMsg.plan.goal);
+        } else {
+          setTaskSteps([]);
+          setCurrentGoal('');
+        }
+        setTaskDiffs(lastAssistantMsg?.diffs || []);
+        setTaskCommands(lastAssistantMsg?.commands || []);
       } else {
+        setActiveChatId(id);
+        setActivityPanelOpen(false);
         setTaskSteps([]);
         setCurrentGoal('');
+        setTaskDiffs([]);
+        setTaskCommands([]);
       }
     }
   };
@@ -414,7 +432,9 @@ export const App: React.FC = () => {
     if (type === 'plan_created') {
       if (data.steps) {
         setTaskSteps(data.steps);
-        setActivityPanelOpen(true); // Open activity panel only when a real plan is created!
+        if (mode === 'agent') {
+          setActivityPanelOpen(true); // Open activity panel only in agent mode!
+        }
       }
     } else if (type === 'step_start' || type === 'step_complete' || type === 'step_failed') {
       if (data.step) {
@@ -512,6 +532,14 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleToggleActivityPanel = () => {
+    if (mode === 'agent') {
+      setActivityPanelOpen((prev) => !prev);
+    } else {
+      setActivityPanelOpen(false);
+    }
+  };
+
   const handleModeChange = (newMode: 'agent' | 'chat') => {
     setMode(newMode);
     if (newMode === 'agent') {
@@ -527,11 +555,22 @@ export const App: React.FC = () => {
         setActiveConversationId(targetId);
         const conv = conversations.find((c) => c.id === targetId);
         setMessages(conv?.messages || []);
+        const lastAssistantMsg = [...(conv?.messages || [])].reverse().find((m) => m.role === 'assistant');
+        if (lastAssistantMsg?.plan) {
+          setTaskSteps(lastAssistantMsg.plan.steps);
+          setCurrentGoal(lastAssistantMsg.plan.goal);
+        } else {
+          setTaskSteps([]);
+          setCurrentGoal('');
+        }
+        setTaskDiffs(lastAssistantMsg?.diffs || []);
+        setTaskCommands(lastAssistantMsg?.commands || []);
       } else {
         handleNewChat('agent');
       }
     } else {
-      // Switching back to Assistant mode
+      // Switching back to Assistant mode - Agent panel will NOT open or have the option to open
+      setActivityPanelOpen(false);
       const chatConvs = conversations.filter((c) => c.mode === 'chat' || !c.mode);
       const targetId = activeChatId && chatConvs.some((c) => c.id === activeChatId)
         ? activeChatId
@@ -542,6 +581,10 @@ export const App: React.FC = () => {
         setActiveConversationId(targetId);
         const conv = conversations.find((c) => c.id === targetId);
         setMessages(conv?.messages || []);
+        setTaskSteps([]);
+        setCurrentGoal('');
+        setTaskDiffs([]);
+        setTaskCommands([]);
       } else {
         handleNewChat('chat');
       }
@@ -666,8 +709,8 @@ export const App: React.FC = () => {
         onModeChange={handleModeChange}
         onOpenSettings={() => setSettingsModalOpen(true)}
         onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
-        activityPanelOpen={activityPanelOpen}
-        onToggleActivityPanel={() => setActivityPanelOpen(!activityPanelOpen)}
+        activityPanelOpen={activityPanelOpen && mode === 'agent'}
+        onToggleActivityPanel={handleToggleActivityPanel}
         onSend={handleSend}
         onStop={handleStop}
         providers={providers}
@@ -677,9 +720,9 @@ export const App: React.FC = () => {
         onApproveCommand={() => setPendingApproval(null)}
       />
 
-      {/* Right Activity Panel */}
+      {/* Right Activity Panel - Strictly for Agent Mode only */}
       <ActivityPanel
-        isOpen={activityPanelOpen}
+        isOpen={activityPanelOpen && mode === 'agent'}
         onClose={() => setActivityPanelOpen(false)}
         currentGoal={currentGoal}
         steps={taskSteps}
@@ -687,6 +730,7 @@ export const App: React.FC = () => {
         commands={taskCommands}
         workspaceTree={workspaceTree}
         onSelectFile={(filePath) => setPreviewFilePath(filePath)}
+        onSelectSuggestion={(prompt) => handleSend(prompt)}
       />
 
       {/* Settings Modal */}

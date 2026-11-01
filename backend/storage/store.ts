@@ -23,6 +23,8 @@ export interface ChatMessage {
       detail?: string;
     }>;
   };
+  diffs?: any[];
+  commands?: any[];
 }
 
 export interface Conversation {

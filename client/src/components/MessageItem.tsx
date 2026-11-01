@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Copy,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Terminal,
-  FileCode,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  FileText,
-} from 'lucide-react';
+import { Copy, Check, FileText } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { NeutronLogo } from './NeutronLogo';
 
@@ -80,52 +68,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
       </div>
 
       <div className="assistant-bubble">
-
-        {/* Task Plan Checklist if present */}
-        {message.plan && message.plan.steps.length > 0 && (
-          <div className="plan-container">
-            <div className="plan-title">
-              <CheckCircle2 size={14} style={{ color: 'var(--accent-blue)' }} />
-              <span>Execution Plan: {message.plan.goal}</span>
-            </div>
-            <div className="plan-steps-list">
-              {message.plan.steps.map((step) => (
-                <div key={step.id} className="plan-step-item">
-                  <div style={{ marginTop: '2px' }}>
-                    {step.status === 'completed' && (
-                      <CheckCircle2 size={14} style={{ color: 'var(--status-success)' }} />
-                    )}
-                    {step.status === 'in_progress' && (
-                      <Loader2
-                        size={14}
-                        style={{ color: 'var(--accent-blue)', animation: 'spin 1s linear infinite' }}
-                      />
-                    )}
-                    {step.status === 'failed' && (
-                      <AlertCircle size={14} style={{ color: 'var(--status-error)' }} />
-                    )}
-                    {step.status === 'pending' && (
-                      <Clock size={14} style={{ color: 'var(--text-muted)' }} />
-                    )}
-                  </div>
-                  <div>
-                    <div className="plan-step-title">{step.title}</div>
-                    {step.detail && <div className="plan-step-detail">{step.detail}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tool Execution Cards if any */}
-        {message.toolsCalled && message.toolsCalled.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {message.toolsCalled.map((tool, idx) => (
-              <ToolCard key={idx} tool={tool} />
-            ))}
-          </div>
-        )}
+        {/* Note: Execution steps are strictly displayed in the Agent Panel, NOT in the chat section */}
 
         {/* Markdown Formatted Content or 4-Dot Loading Wave */}
         <div className="markdown-content">
@@ -144,74 +87,6 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, isStreaming }
           )}
         </div>
       </div>
-    </div>
-  );
-};
-
-/**
- * Interactive Tool Execution Card
- */
-const ToolCard: React.FC<{ tool: any }> = ({ tool }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="tool-card">
-      <div className="tool-card-header" onClick={() => setExpanded(!expanded)}>
-        <div className="tool-badge">
-          {tool.toolName.includes('command') ? <Terminal size={13} /> : <FileCode size={13} />}
-          <span>{tool.toolName}</span>
-          {tool.params?.path && (
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
-              ({tool.params.path})
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className={`tool-status-pill ${tool.status}`}>
-            {tool.status}
-          </span>
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </div>
-      </div>
-
-      {expanded && (
-        <div
-          style={{
-            marginTop: '8px',
-            paddingTop: '8px',
-            borderTop: '1px solid var(--border-subtle)',
-            fontSize: '12px',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
-          {tool.params && (
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Parameters:</div>
-              <pre style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(tool.params, null, 2)}
-              </pre>
-            </div>
-          )}
-          {tool.diff && (
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Diff Generated:</div>
-              <div className="diff-container" style={{ maxHeight: '160px' }}>
-                {tool.diff.diffText.split('\n').map((line: string, i: number) => {
-                  let type = '';
-                  if (line.startsWith('+')) type = 'addition';
-                  else if (line.startsWith('-')) type = 'deletion';
-                  else if (line.startsWith('@@')) type = 'header';
-                  return (
-                    <div key={i} className={`diff-line ${type}`}>
-                      {line}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
@@ -301,7 +176,12 @@ const DiffBlock: React.FC<{ diff: string }> = ({ diff }) => {
           else if (line.startsWith('@@')) lineType = 'header';
           return (
             <div key={idx} className={`diff-line ${lineType}`}>
-              {line}
+              <span className="line-prefix">
+                {lineType === 'addition' ? '+' : lineType === 'deletion' ? '-' : ' '}
+              </span>
+              <span className="line-content">
+                {lineType === 'addition' || lineType === 'deletion' ? line.slice(1) : line}
+              </span>
             </div>
           );
         })}
@@ -311,93 +191,87 @@ const DiffBlock: React.FC<{ diff: string }> = ({ diff }) => {
 };
 
 /**
- * Text Section with markdown bold, headers, lists, quotes, inline code
+ * Text Section with Inline Code, Bold, Lists, Headers & Links
  */
 const TextSection: React.FC<{ text: string }> = ({ text }) => {
-  const lines = text.split('\n');
+  const paragraphs = text.split(/\n\n+/);
 
   return (
-    <div>
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
+    <>
+      {paragraphs.map((p, pIdx) => {
+        const trimmed = p.trim();
+        if (!trimmed) return null;
 
+        // Headers
         if (trimmed.startsWith('### ')) {
-          return <h3 key={i}>{formatInline(trimmed.slice(4))}</h3>;
-        }
-        if (trimmed.startsWith('## ')) {
-          return <h2 key={i}>{formatInline(trimmed.slice(3))}</h2>;
-        }
-        if (trimmed.startsWith('# ')) {
-          return <h1 key={i}>{formatInline(trimmed.slice(2))}</h1>;
-        }
-        if (trimmed.startsWith('> ')) {
           return (
-            <blockquote key={i}>
-              {formatInline(trimmed.slice(2))}
-            </blockquote>
+            <h3 key={pIdx} className="markdown-h3">
+              {formatInlineStyles(trimmed.replace(/^###\s+/, ''))}
+            </h3>
           );
         }
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        if (trimmed.startsWith('## ')) {
           return (
-            <ul key={i} style={{ margin: '4px 0 4px 20px' }}>
-              <li>{formatInline(trimmed.slice(2))}</li>
+            <h2 key={pIdx} className="markdown-h2">
+              {formatInlineStyles(trimmed.replace(/^##\s+/, ''))}
+            </h2>
+          );
+        }
+        if (trimmed.startsWith('# ')) {
+          return (
+            <h1 key={pIdx} className="markdown-h1">
+              {formatInlineStyles(trimmed.replace(/^#\s+/, ''))}
+            </h1>
+          );
+        }
+
+        // Bullet list block
+        if (trimmed.split('\n').every((line) => line.trim().startsWith('- ') || line.trim().startsWith('* '))) {
+          const items = trimmed.split('\n').map((l) => l.trim().replace(/^[-*]\s+/, ''));
+          return (
+            <ul key={pIdx} className="markdown-list">
+              {items.map((item, iIdx) => (
+                <li key={iIdx}>{formatInlineStyles(item)}</li>
+              ))}
             </ul>
           );
         }
-        if (/^\d+\.\s/.test(trimmed)) {
-          const content = trimmed.replace(/^\d+\.\s/, '');
-          return (
-            <ol key={i} style={{ margin: '4px 0 4px 20px' }}>
-              <li>{formatInline(content)}</li>
-            </ol>
-          );
-        }
-        if (!trimmed) {
-          return <div key={i} style={{ height: '8px' }} />;
-        }
 
-        return <p key={i}>{formatInline(line)}</p>;
+        // Standard paragraph
+        return (
+          <p key={pIdx} className="markdown-p">
+            {formatInlineStyles(trimmed)}
+          </p>
+        );
       })}
-    </div>
+    </>
   );
 };
 
-function formatInline(str: string): React.ReactNode {
+function formatInlineStyles(raw: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  let last = 0;
-  const regex = /(\*\*.*?\*\*|`[^`]+`)/g;
+  const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
+  let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(str)) !== null) {
-    if (match.index > last) {
-      parts.push(str.substring(last, match.index));
+  while ((match = regex.exec(raw)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(raw.substring(lastIndex, match.index));
     }
     const token = match[0];
     if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(<strong key={match.index}>{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      parts.push(<em key={match.index}>{token.slice(1, -1)}</em>);
     } else if (token.startsWith('`') && token.endsWith('`')) {
-      parts.push(
-        <code
-          key={match.index}
-          style={{
-            background: 'var(--bg-surface-active)',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--text-accent)',
-          }}
-        >
-          {token.slice(1, -1)}
-        </code>
-      );
+      parts.push(<code key={match.index}>{token.slice(1, -1)}</code>);
     }
-    last = match.index + token.length;
+    lastIndex = match.index + token.length;
   }
 
-  if (last < str.length) {
-    parts.push(str.substring(last));
+  if (lastIndex < raw.length) {
+    parts.push(raw.substring(lastIndex));
   }
 
-  return parts.length > 0 ? parts : str;
+  return parts;
 }

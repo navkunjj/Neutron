@@ -66,8 +66,8 @@ export class AgentOrchestrator {
     model: string,
     emit: (event: AgentEvent) => void
   ): Promise<ChatMessage> {
-    // If mode is explicitly 'agent', or if user prompt explicitly commands workspace file actions
-    const isCodingTask = mode === 'agent' ? true : this.isWorkspaceActionCommand(userPrompt);
+    // When in agent mode, run autonomous coding agent. In chat mode, run conversational assistant.
+    const isCodingTask = mode === 'agent';
 
     if (!isCodingTask) {
       // General conversational assistant flow
@@ -371,6 +371,8 @@ RUN: <command, e.g. python script.py or node app.js>
         goal: userPrompt,
         steps,
       },
+      diffs: diffsRecorded,
+      commands: commandsRecorded,
     };
 
     emit({

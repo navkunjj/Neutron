@@ -196,7 +196,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const compactPlaceholder = isAgent ? "Instruct Coding Agent..." : "Message Neutron...";
 
   return (
-    <main className="neutron-main-workspace">
+    <main className={`neutron-main-workspace ${isAgent ? 'mode-agent' : 'mode-assistant'}`}>
       {/* Top Header */}
       <Header
         activeModel={activeModel}
@@ -243,30 +243,32 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         </div>
       )}
 
-      {/* Right Edge Panel Toggle & Grip Indicator (matching reference) */}
-      <div
-        className="workspace-right-edge-handle"
-        onClick={onToggleActivityPanel}
-        title={activityPanelOpen ? 'Close activity panel' : 'Open activity panel'}
-      >
-        <div className="edge-chevron-wrapper">
-          {activityPanelOpen ? (
-            <ChevronRight size={13} className="edge-chevron" />
-          ) : (
-            <ChevronLeft size={13} className="edge-chevron" />
-          )}
-        </div>
-        <div className="edge-grip-pill">
-          <div className="edge-grip-dots">
-            <div className="grip-dot" />
-            <div className="grip-dot" />
-            <div className="grip-dot" />
-            <div className="grip-dot" />
-            <div className="grip-dot" />
-            <div className="grip-dot" />
+      {/* Right Edge Panel Toggle & Grip Indicator (ONLY in Coding Agent mode) */}
+      {isAgent && (
+        <div
+          className={`workspace-right-edge-handle ${activityPanelOpen ? 'panel-open' : ''}`}
+          onClick={onToggleActivityPanel}
+          title={activityPanelOpen ? 'Close Agent Activity Panel' : 'Open Agent Activity Panel'}
+        >
+          <div className="edge-chevron-wrapper">
+            {activityPanelOpen ? (
+              <ChevronRight size={13} className="edge-chevron" />
+            ) : (
+              <ChevronLeft size={13} className="edge-chevron" />
+            )}
+          </div>
+          <div className="edge-grip-pill">
+            <div className="edge-grip-dots">
+              <div className="grip-dot" />
+              <div className="grip-dot" />
+              <div className="grip-dot" />
+              <div className="grip-dot" />
+              <div className="grip-dot" />
+              <div className="grip-dot" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Scrollable Container */}
       <div className="chat-scroll-container" ref={scrollRef}>

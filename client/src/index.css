@@ -3866,3 +3866,332 @@ body,
   border-radius: 8px;
   margin-top: 4px;
 }
+
+/* ==========================================================================
+   ENHANCED QUALITY & UX: TOPBAR MODE SWITCHER, AGENT PANEL & STANDBY
+   ========================================================================== */
+
+.topbar-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-btn-icon {
+  opacity: 0.85;
+  transition: transform 0.15s ease;
+}
+
+.topbar-mode-btn:hover .mode-btn-icon {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.mode-agent-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  display: inline-block;
+  margin-left: 2px;
+  animation: livePulse 2s infinite ease-in-out;
+}
+
+.topbar-agent-panel-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+/* Clean workspace container behavior based on mode */
+.neutron-main-workspace.mode-assistant {
+  /* In assistant mode, zero space reserved on right edge for panel handles */
+}
+
+/* Pulse indicator animation variants */
+.live-pulse-dot.pulse-running {
+  background-color: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: livePulse 1s infinite ease-in-out;
+}
+
+.live-pulse-dot.pulse-done {
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: none;
+}
+
+.spin-fast {
+  animation: spin 0.9s linear infinite;
+}
+
+/* Plan Progress Bar and Stats */
+.plan-progress-header {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.plan-progress-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.plan-progress-title-row .timeline-section-title {
+  margin-bottom: 0;
+}
+
+.plan-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.plan-status-chip.status-running {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.plan-status-chip.status-done {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
+}
+
+.plan-status-chip.status-err {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.plan-progress-bar-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.plan-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.plan-progress-bar-fill.animated-gradient {
+  background-size: 200% 100%;
+  animation: shimmerGradient 2s linear infinite;
+}
+
+@keyframes shimmerGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.plan-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.step-inline-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Agent Standby State */
+.activity-standby-container {
+  padding: 30px 16px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.standby-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.05));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.2);
+}
+
+.standby-sparkle {
+  color: #38bdf8;
+  animation: floatOrb 3s ease-in-out infinite;
+}
+
+.standby-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.standby-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 320px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+.standby-suggestions-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+}
+
+.standby-suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.standby-suggestion-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.standby-suggestion-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.standby-btn-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.standby-btn-icon {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.standby-btn-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.standby-btn-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  padding-left: 19px;
+}
+
+/* Diffs Tab Enhancements */
+.diffs-summary-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  margin-bottom: 12px;
+}
+
+.summary-file-count {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.summary-line-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diff-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diff-open-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+}
+
+/* Terminal Tab Enhancements */
+.terminal-copy-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.terminal-copy-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
